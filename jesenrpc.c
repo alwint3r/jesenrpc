@@ -593,6 +593,7 @@ static jesenrpc_err_t jrpc_parse_response_node(jesen_node_t *root,
     }
   }
 
+  *out_resp = resp;
   return JESENRPC_ERR_NONE;
 }
 
