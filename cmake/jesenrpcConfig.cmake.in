@@ -1,0 +1,41 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+include("${CMAKE_CURRENT_LIST_DIR}/jesenrpcTargets.cmake")
+
+set(_jesenrpc_libdir "@CMAKE_INSTALL_LIBDIR@")
+set(_jesenrpc_includedir "@CMAKE_INSTALL_INCLUDEDIR@")
+
+if(NOT TARGET jesen)
+    if(JESEN_LIBRARY AND JESEN_INCLUDE_DIR)
+        add_library(jesen UNKNOWN IMPORTED)
+        set_target_properties(jesen PROPERTIES
+            IMPORTED_LOCATION "${JESEN_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${JESEN_INCLUDE_DIR}"
+        )
+    endif()
+endif()
+
+if(NOT TARGET jesen)
+    find_dependency(jesen CONFIG QUIET)
+endif()
+
+if(NOT TARGET jesen)
+    find_library(JESENRPC_JESEN_LIB NAMES jesen
+        HINTS "${PACKAGE_PREFIX_DIR}/${_jesenrpc_libdir}")
+    find_path(JESENRPC_JESEN_INCLUDE NAMES jesen.h
+        HINTS "${PACKAGE_PREFIX_DIR}/${_jesenrpc_includedir}")
+    if(JESENRPC_JESEN_LIB AND JESENRPC_JESEN_INCLUDE)
+        add_library(jesen UNKNOWN IMPORTED)
+        set_target_properties(jesen PROPERTIES
+            IMPORTED_LOCATION "${JESENRPC_JESEN_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${JESENRPC_JESEN_INCLUDE}"
+        )
+    endif()
+endif()
+
+if(NOT TARGET jesen)
+    message(FATAL_ERROR
+        "jesen target not found. Install or provide jesen before calling find_package(jesenrpc).")
+endif()

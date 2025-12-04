@@ -19,6 +19,29 @@ cmake ..
 make
 ```
 
+To build as a shared library (for example, to produce a DLL on Windows):
+
+```bash
+cmake -DJESENRPC_BUILD_SHARED=ON ..
+make
+```
+
+To use your own build of `jesen` instead of the vendored copy:
+
+```bash
+cmake -DJESENRPC_USE_EXTERNAL_JESEN=ON -Djesen_DIR=/path/to/jesen/cmake ..
+```
+
+Ensure a `jesen` CMake target is available (via `find_package(jesen)` or your own `add_subdirectory`).
+If `jesen` does not provide a CMake package file, you can instead point to
+your artifacts directly:
+
+```bash
+cmake -DJESENRPC_USE_EXTERNAL_JESEN=ON \
+      -DJESEN_LIBRARY=/path/to/libjesen.a \
+      -DJESEN_INCLUDE_DIR=/path/to/jesen/include ..
+```
+
 To build with tests:
 
 ```bash
@@ -32,6 +55,16 @@ ctest
 ```bash
 cmake --install . --prefix /usr/local
 ```
+
+After installation, consume with CMake:
+
+```cmake
+find_package(jesenrpc CONFIG REQUIRED)
+target_link_libraries(myapp PRIVATE jesenrpc::jesenrpc)
+```
+If CMake cannot locate `jesen`, provide it first (e.g., `find_package(jesen)`),
+or pass `-DJESEN_LIBRARY=/path/to/libjesen.a -DJESEN_INCLUDE_DIR=/path/to/include`
+when invoking CMake so `find_package(jesenrpc)` can create an imported `jesen` target.
 
 ## Usage
 
@@ -197,4 +230,3 @@ jesenrpc_request_batch_destroy(&batch);
 | `JESENRPC_JSONRPC_ERROR_INTERNAL` | -32603 | Internal error |
 
 Server-defined errors should use codes in the range -32099 to -32000.
-

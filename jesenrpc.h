@@ -4,7 +4,8 @@
  *
  * This library provides a C implementation of the JSON-RPC 2.0 specification.
  * It supports creating, serializing, parsing, and validating JSON-RPC requests,
- * responses, and error objects. Batch requests and responses are also supported.
+ * responses, and error objects. Batch requests and responses are also
+ * supported.
  *
  * @see https://www.jsonrpc.org/specification
  *
@@ -50,6 +51,32 @@
 #include <stdint.h>
 
 #include "jesen.h"
+
+// clang-format off
+#ifndef JESENRPC_API
+	#if defined(_WIN32) || defined(__CYGWIN__)
+		#if defined(JESENRPC_SHARED)
+			#if defined(JESENRPC_BUILDING_SHARED)
+				#define JESENRPC_API __declspec(dllexport)
+			#else
+				#define JESENRPC_API __declspec(dllimport)
+			#endif
+		#else
+			#define JESENRPC_API
+		#endif
+	#else
+		#if defined(JESENRPC_SHARED) && __GNUC__ >= 4
+			#define JESENRPC_API __attribute__((visibility("default")))
+		#else
+			#define JESENRPC_API
+		#endif
+	#endif
+#endif
+// clang-format on
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @defgroup constants Constants and Limits
@@ -149,8 +176,8 @@ typedef struct jesenrpc_id {
   union {
     int64_t number; /**< Integer ID value (when kind == JESENRPC_ID_NUMBER). */
     struct {
-      char *data;  /**< String ID data (when kind == JESENRPC_ID_STRING). */
-      size_t len;  /**< Length of string ID. */
+      char *data; /**< String ID data (when kind == JESENRPC_ID_STRING). */
+      size_t len; /**< Length of string ID. */
     } string;
   } value;
 } jesenrpc_id_t;
@@ -162,35 +189,38 @@ typedef struct jesenrpc_id {
  * Use jesenrpc_error_object_create() to allocate and initialize.
  */
 typedef struct jesenrpc_error_object {
-  int32_t code;        /**< Error code (use JESENRPC_JSONRPC_ERROR_* constants). */
-  char *message;       /**< Human-readable error description. */
-  jesen_node_t *data;  /**< Optional additional error data. May be NULL. */
+  int32_t code;  /**< Error code (use JESENRPC_JSONRPC_ERROR_* constants). */
+  char *message; /**< Human-readable error description. */
+  jesen_node_t *data; /**< Optional additional error data. May be NULL. */
 } jesenrpc_error_object_t;
 
 /**
  * @brief Represents a JSON-RPC request object.
  *
  * A request without an ID (id.kind == JESENRPC_ID_NONE) is a notification.
- * Use jesenrpc_request_create() or jesenrpc_request_create_with_id() to allocate.
+ * Use jesenrpc_request_create() or jesenrpc_request_create_with_id() to
+ * allocate.
  */
 typedef struct jesenrpc_request {
   const char *jsonrpc; /**< Protocol version, always "2.0". */
   jesenrpc_id_t id;    /**< Request ID. JESENRPC_ID_NONE for notifications. */
   char *method_name;   /**< Method name to invoke. */
-  jesen_node_t *params;/**< Method parameters. May be NULL. Must be array or object. */
+  jesen_node_t
+      *params; /**< Method parameters. May be NULL. Must be array or object. */
 } jesenrpc_request_t;
 
 /**
  * @brief Represents a JSON-RPC response object.
  *
  * A response contains either a result OR an error, never both.
- * Use jesenrpc_response_create() or jesenrpc_response_create_for_request() to allocate.
+ * Use jesenrpc_response_create() or jesenrpc_response_create_for_request() to
+ * allocate.
  */
 typedef struct jesenrpc_response {
-  const char *jsonrpc;             /**< Protocol version, always "2.0". */
-  jesenrpc_id_t id;                /**< Response ID (must match request ID). */
-  jesen_node_t *result;            /**< Result value. NULL when error is set. */
-  jesenrpc_error_object_t *error;  /**< Error object. NULL when result is set. */
+  const char *jsonrpc;            /**< Protocol version, always "2.0". */
+  jesenrpc_id_t id;               /**< Response ID (must match request ID). */
+  jesen_node_t *result;           /**< Result value. NULL when error is set. */
+  jesenrpc_error_object_t *error; /**< Error object. NULL when result is set. */
 } jesenrpc_response_t;
 
 /**
@@ -227,7 +257,8 @@ typedef struct jesenrpc_response_batch {
  * @param value The integer value to set.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_id_set_number(jesenrpc_id_t *id, int64_t value);
+JESENRPC_API jesenrpc_err_t jesenrpc_id_set_number(jesenrpc_id_t *id,
+                                                   int64_t value);
 
 /**
  * @brief Sets an ID to a string value.
@@ -236,22 +267,23 @@ jesenrpc_err_t jesenrpc_id_set_number(jesenrpc_id_t *id, int64_t value);
  * @param value_len Length of the string.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_id_set_string(jesenrpc_id_t *id, const char *value,
-                                      size_t value_len);
+JESENRPC_API jesenrpc_err_t jesenrpc_id_set_string(jesenrpc_id_t *id,
+                                                   const char *value,
+                                                   size_t value_len);
 
 /**
  * @brief Sets an ID to explicit null.
  * @param id Pointer to the ID structure to modify.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_id_set_null(jesenrpc_id_t *id);
+JESENRPC_API jesenrpc_err_t jesenrpc_id_set_null(jesenrpc_id_t *id);
 
 /**
  * @brief Sets an ID to indicate a notification (no ID field).
  * @param id Pointer to the ID structure to modify.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_id_set_notification(jesenrpc_id_t *id);
+JESENRPC_API jesenrpc_err_t jesenrpc_id_set_notification(jesenrpc_id_t *id);
 
 /**
  * @brief Frees resources associated with an ID.
@@ -259,26 +291,28 @@ jesenrpc_err_t jesenrpc_id_set_notification(jesenrpc_id_t *id);
  * @return JESENRPC_ERR_NONE on success, or an error code.
  * @note Only needed for string IDs; safe to call on any ID type.
  */
-jesenrpc_err_t jesenrpc_id_destroy(jesenrpc_id_t *id);
+JESENRPC_API jesenrpc_err_t jesenrpc_id_destroy(jesenrpc_id_t *id);
 
 /** @} */
 
 /**
  * @defgroup request_functions Request Functions
- * @brief Functions for creating, manipulating, and serializing JSON-RPC requests.
+ * @brief Functions for creating, manipulating, and serializing JSON-RPC
+ * requests.
  * @{
  */
 
 /**
  * @brief Creates a new JSON-RPC request (notification, no ID).
- * @param method_name The method name to invoke (max JESENRPC_METHOD_NAME_MAX_LEN chars).
+ * @param method_name The method name to invoke (max
+ * JESENRPC_METHOD_NAME_MAX_LEN chars).
  * @param request Output pointer to receive the allocated request.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  * @note The returned request is a notification. Use jesenrpc_request_set_id()
  *       or jesenrpc_request_create_with_id() for requests expecting a response.
  */
-jesenrpc_err_t jesenrpc_request_create(const char *method_name,
-                                       jesenrpc_request_t **request);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_request_create(const char *method_name, jesenrpc_request_t **request);
 
 /**
  * @brief Creates a new JSON-RPC request with a specific ID.
@@ -287,9 +321,9 @@ jesenrpc_err_t jesenrpc_request_create(const char *method_name,
  * @param request Output pointer to receive the allocated request.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_request_create_with_id(const char *method_name,
-                                               const jesenrpc_id_t *id,
-                                               jesenrpc_request_t **request);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_create_with_id(
+    const char *method_name, const jesenrpc_id_t *id,
+    jesenrpc_request_t **request);
 
 /**
  * @brief Sets the ID of an existing request.
@@ -297,25 +331,27 @@ jesenrpc_err_t jesenrpc_request_create_with_id(const char *method_name,
  * @param id The ID to set (copied internally).
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_request_set_id(jesenrpc_request_t *request,
-                                       const jesenrpc_id_t *id);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_set_id(jesenrpc_request_t *request,
+                                                    const jesenrpc_id_t *id);
 
 /**
  * @brief Sets the parameters for a request.
  * @param request The request to modify.
- * @param params The parameters (must be a jesen array or object). Ownership transferred.
+ * @param params The parameters (must be a jesen array or object). Ownership
+ * transferred.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  * @note The request takes ownership of params. Do not free params separately.
  */
-jesenrpc_err_t jesenrpc_request_set_params(jesenrpc_request_t *request,
-                                           jesen_node_t *params);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_request_set_params(jesenrpc_request_t *request, jesen_node_t *params);
 
 /**
  * @brief Checks if a request is a notification.
  * @param request The request to check.
  * @return true if the request has no ID (is a notification), false otherwise.
  */
-bool jesenrpc_request_is_notification(const jesenrpc_request_t *request);
+JESENRPC_API bool
+jesenrpc_request_is_notification(const jesenrpc_request_t *request);
 
 /**
  * @brief Serializes a request to a JSON string.
@@ -324,15 +360,16 @@ bool jesenrpc_request_is_notification(const jesenrpc_request_t *request);
  * @param out_buf_len Size of the output buffer.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_request_serialize(const jesenrpc_request_t *request,
-                                          char *out_buf, size_t out_buf_len);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_serialize(
+    const jesenrpc_request_t *request, char *out_buf, size_t out_buf_len);
 
 /**
  * @brief Validates a request structure.
  * @param request The request to validate.
  * @return JESENRPC_ERR_NONE if valid, or an error code describing the issue.
  */
-jesenrpc_err_t jesenrpc_request_validate(const jesenrpc_request_t *request);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_request_validate(const jesenrpc_request_t *request);
 
 /**
  * @brief Parses a JSON string into a request structure.
@@ -340,35 +377,38 @@ jesenrpc_err_t jesenrpc_request_validate(const jesenrpc_request_t *request);
  * @param buf_len Length of the JSON string.
  * @param out Output pointer to receive the parsed request.
  * @return JESENRPC_ERR_NONE on success, or an error code.
- * @note Caller is responsible for calling jesenrpc_request_destroy() on the result.
+ * @note Caller is responsible for calling jesenrpc_request_destroy() on the
+ * result.
  */
-jesenrpc_err_t jesenrpc_request_parse(char *buf, size_t buf_len,
-                                      jesenrpc_request_t **out);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_parse(char *buf, size_t buf_len,
+                                                   jesenrpc_request_t **out);
 
 /**
  * @brief Frees a request and all associated resources.
  * @param request The request to destroy.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_request_destroy(jesenrpc_request_t *request);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_request_destroy(jesenrpc_request_t *request);
 
 /** @} */
 
 /**
  * @defgroup response_functions Response Functions
- * @brief Functions for creating, manipulating, and serializing JSON-RPC responses.
+ * @brief Functions for creating, manipulating, and serializing JSON-RPC
+ * responses.
  * @{
  */
 
 /**
  * @brief Creates a response for a given request, copying its ID.
- * @param request The request to respond to (must have an ID, not a notification).
+ * @param request The request to respond to (must have an ID, not a
+ * notification).
  * @param response Output pointer to receive the allocated response.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t
-jesenrpc_response_create_for_request(const jesenrpc_request_t *request,
-                                     jesenrpc_response_t **response);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_create_for_request(
+    const jesenrpc_request_t *request, jesenrpc_response_t **response);
 
 /**
  * @brief Creates a response with a specific ID.
@@ -376,8 +416,8 @@ jesenrpc_response_create_for_request(const jesenrpc_request_t *request,
  * @param response Output pointer to receive the allocated response.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_response_create_with_id(const jesenrpc_id_t *id,
-                                                jesenrpc_response_t **response);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_create_with_id(
+    const jesenrpc_id_t *id, jesenrpc_response_t **response);
 
 /**
  * @brief Creates a response with a numeric ID.
@@ -385,8 +425,8 @@ jesenrpc_err_t jesenrpc_response_create_with_id(const jesenrpc_id_t *id,
  * @param response Output pointer to receive the allocated response.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_response_create(int32_t request_id,
-                                        jesenrpc_response_t **response);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_response_create(int32_t request_id, jesenrpc_response_t **response);
 
 /**
  * @brief Sets the result value for a successful response.
@@ -396,8 +436,8 @@ jesenrpc_err_t jesenrpc_response_create(int32_t request_id,
  *         result/error is already set.
  * @note Cannot be called if an error is already set.
  */
-jesenrpc_err_t jesenrpc_response_set_result(jesenrpc_response_t *response,
-                                            jesen_node_t *result);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_set_result(
+    jesenrpc_response_t *response, jesen_node_t *result);
 
 /**
  * @brief Sets the error object for a failed response.
@@ -407,8 +447,8 @@ jesenrpc_err_t jesenrpc_response_set_result(jesenrpc_response_t *response,
  *         result/error is already set.
  * @note Cannot be called if a result is already set.
  */
-jesenrpc_err_t jesenrpc_response_set_error(jesenrpc_response_t *response,
-                                           jesenrpc_error_object_t *error);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_set_error(
+    jesenrpc_response_t *response, jesenrpc_error_object_t *error);
 
 /**
  * @brief Serializes a response to a JSON string.
@@ -417,15 +457,16 @@ jesenrpc_err_t jesenrpc_response_set_error(jesenrpc_response_t *response,
  * @param out_buf_len Size of the output buffer.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_response_serialize(const jesenrpc_response_t *response,
-                                           char *out_buf, size_t out_buf_len);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_serialize(
+    const jesenrpc_response_t *response, char *out_buf, size_t out_buf_len);
 
 /**
  * @brief Validates a response structure.
  * @param response The response to validate.
  * @return JESENRPC_ERR_NONE if valid, or an error code describing the issue.
  */
-jesenrpc_err_t jesenrpc_response_validate(const jesenrpc_response_t *response);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_response_validate(const jesenrpc_response_t *response);
 
 /**
  * @brief Parses a JSON string into a response structure.
@@ -433,17 +474,19 @@ jesenrpc_err_t jesenrpc_response_validate(const jesenrpc_response_t *response);
  * @param buf_len Length of the JSON string.
  * @param out Output pointer to receive the parsed response.
  * @return JESENRPC_ERR_NONE on success, or an error code.
- * @note Caller is responsible for calling jesenrpc_response_destroy() on the result.
+ * @note Caller is responsible for calling jesenrpc_response_destroy() on the
+ * result.
  */
-jesenrpc_err_t jesenrpc_response_parse(char *buf, size_t buf_len,
-                                       jesenrpc_response_t **out);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_parse(char *buf, size_t buf_len,
+                                                    jesenrpc_response_t **out);
 
 /**
  * @brief Frees a response and all associated resources.
  * @param response The response to destroy.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_response_destroy(jesenrpc_response_t *response);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_response_destroy(jesenrpc_response_t *response);
 
 /** @} */
 
@@ -460,24 +503,25 @@ jesenrpc_err_t jesenrpc_response_destroy(jesenrpc_response_t *response);
  * @param error Output pointer to receive the allocated error object.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_error_object_create(int32_t code, const char *message,
-                                            jesenrpc_error_object_t **error);
+JESENRPC_API jesenrpc_err_t jesenrpc_error_object_create(
+    int32_t code, const char *message, jesenrpc_error_object_t **error);
 
 /**
  * @brief Sets additional data on an error object.
  * @param error The error object to modify.
- * @param data Additional error data. Ownership transferred. May be NULL to clear.
+ * @param data Additional error data. Ownership transferred. May be NULL to
+ * clear.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_error_object_set_data(jesenrpc_error_object_t *error,
-                                              jesen_node_t *data);
+JESENRPC_API jesenrpc_err_t jesenrpc_error_object_set_data(
+    jesenrpc_error_object_t *error, jesen_node_t *data);
 
 /**
  * @brief Validates an error object structure.
  * @param error The error object to validate.
  * @return JESENRPC_ERR_NONE if valid, or an error code describing the issue.
  */
-jesenrpc_err_t
+JESENRPC_API jesenrpc_err_t
 jesenrpc_error_object_validate(const jesenrpc_error_object_t *error);
 
 /**
@@ -485,7 +529,8 @@ jesenrpc_error_object_validate(const jesenrpc_error_object_t *error);
  * @param error The error object to destroy.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_error_object_destroy(jesenrpc_error_object_t *error);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_error_object_destroy(jesenrpc_error_object_t *error);
 
 /** @} */
 
@@ -503,10 +548,9 @@ jesenrpc_err_t jesenrpc_error_object_destroy(jesenrpc_error_object_t *error);
  * @param out_buf_len Size of the output buffer.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t
-jesenrpc_request_batch_serialize(jesenrpc_request_t *const *requests,
-                                 size_t request_count, char *out_buf,
-                                 size_t out_buf_len);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_batch_serialize(
+    jesenrpc_request_t *const *requests, size_t request_count, char *out_buf,
+    size_t out_buf_len);
 
 /**
  * @brief Serializes multiple responses as a JSON array.
@@ -516,10 +560,9 @@ jesenrpc_request_batch_serialize(jesenrpc_request_t *const *requests,
  * @param out_buf_len Size of the output buffer.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t
-jesenrpc_response_batch_serialize(jesenrpc_response_t *const *responses,
-                                  size_t response_count, char *out_buf,
-                                  size_t out_buf_len);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_batch_serialize(
+    jesenrpc_response_t *const *responses, size_t response_count, char *out_buf,
+    size_t out_buf_len);
 
 /**
  * @brief Parses a JSON array into a batch of requests.
@@ -527,10 +570,11 @@ jesenrpc_response_batch_serialize(jesenrpc_response_t *const *responses,
  * @param buf_len Length of the JSON string.
  * @param out Output structure to receive the parsed requests.
  * @return JESENRPC_ERR_NONE on success, or an error code.
- * @note Caller is responsible for calling jesenrpc_request_batch_destroy() on the result.
+ * @note Caller is responsible for calling jesenrpc_request_batch_destroy() on
+ * the result.
  */
-jesenrpc_err_t jesenrpc_request_batch_parse(char *buf, size_t buf_len,
-                                            jesenrpc_request_batch_t *out);
+JESENRPC_API jesenrpc_err_t jesenrpc_request_batch_parse(
+    char *buf, size_t buf_len, jesenrpc_request_batch_t *out);
 
 /**
  * @brief Parses a JSON array into a batch of responses.
@@ -538,24 +582,30 @@ jesenrpc_err_t jesenrpc_request_batch_parse(char *buf, size_t buf_len,
  * @param buf_len Length of the JSON string.
  * @param out Output structure to receive the parsed responses.
  * @return JESENRPC_ERR_NONE on success, or an error code.
- * @note Caller is responsible for calling jesenrpc_response_batch_destroy() on the result.
+ * @note Caller is responsible for calling jesenrpc_response_batch_destroy() on
+ * the result.
  */
-jesenrpc_err_t jesenrpc_response_batch_parse(char *buf, size_t buf_len,
-                                             jesenrpc_response_batch_t *out);
+JESENRPC_API jesenrpc_err_t jesenrpc_response_batch_parse(
+    char *buf, size_t buf_len, jesenrpc_response_batch_t *out);
 
 /**
  * @brief Frees a request batch and all contained requests.
  * @param batch The batch to destroy.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t jesenrpc_request_batch_destroy(jesenrpc_request_batch_t *batch);
+JESENRPC_API jesenrpc_err_t
+jesenrpc_request_batch_destroy(jesenrpc_request_batch_t *batch);
 
 /**
  * @brief Frees a response batch and all contained responses.
  * @param batch The batch to destroy.
  * @return JESENRPC_ERR_NONE on success, or an error code.
  */
-jesenrpc_err_t
+JESENRPC_API jesenrpc_err_t
 jesenrpc_response_batch_destroy(jesenrpc_response_batch_t *batch);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
