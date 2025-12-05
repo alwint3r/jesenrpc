@@ -243,6 +243,31 @@ typedef struct jesenrpc_response_batch {
   size_t count;                /**< Number of responses in the batch. */
 } jesenrpc_response_batch_t;
 
+/**
+ * @brief Indicates the shape of a parsed JSON-RPC message.
+ */
+typedef enum jesenrpc_message_kind {
+  JESENRPC_MESSAGE_UNKNOWN = 0,     /**< Uninitialized/unknown kind. */
+  JESENRPC_MESSAGE_REQUEST_SINGLE,  /**< Single request object. */
+  JESENRPC_MESSAGE_REQUEST_BATCH,   /**< Batch of request objects. */
+  JESENRPC_MESSAGE_RESPONSE_SINGLE, /**< Single response object. */
+  JESENRPC_MESSAGE_RESPONSE_BATCH   /**< Batch of response objects. */
+} jesenrpc_message_kind_t;
+
+/**
+ * @brief Tagged union holding any parsed JSON-RPC message shape.
+ */
+typedef struct jesenrpc_message {
+  jesenrpc_message_kind_t kind; /**< Parsed message kind. */
+  union {
+    jesenrpc_request_t *request;            /**< When kind == REQUEST_SINGLE. */
+    jesenrpc_request_batch_t request_batch; /**< When kind == REQUEST_BATCH. */
+    jesenrpc_response_t *response; /**< When kind == RESPONSE_SINGLE. */
+    jesenrpc_response_batch_t
+        response_batch; /**< When kind == RESPONSE_BATCH. */
+  } as;
+} jesenrpc_message_t;
+
 /** @} */
 
 /**
@@ -603,6 +628,44 @@ jesenrpc_request_batch_destroy(jesenrpc_request_batch_t *batch);
  */
 JESENRPC_API jesenrpc_err_t
 jesenrpc_response_batch_destroy(jesenrpc_response_batch_t *batch);
+
+/** @} */
+
+/**
+ * @defgroup message_functions Message Functions
+ * @brief Functions for parsing any JSON-RPC message shape.
+ * @{
+ */
+
+/**
+ * @brief Parses any JSON-RPC message (request/response, single/batch).
+ * @param buf The JSON string buffer (may be modified during parsing).
+ * @param buf_len Length of the JSON string.
+ * @param out Output structure to receive the parsed message.
+ * @return JESENRPC_ERR_NONE on success, or an error code.
+ * @note Caller is responsible for calling jesenrpc_message_destroy() on the
+ * result.
+ */
+JESENRPC_API jesenrpc_err_t jesenrpc_message_parse(char *buf, size_t buf_len,
+                                                   jesenrpc_message_t *out);
+
+/**
+ * @brief Determines the message kind without fully materializing it.
+ * @param buf The JSON string buffer (may be modified during parsing).
+ * @param buf_len Length of the JSON string.
+ * @param kind Output to receive the detected kind.
+ * @return JESENRPC_ERR_NONE on success, or an error code.
+ */
+JESENRPC_API jesenrpc_err_t jesenrpc_message_peek_kind(
+    char *buf, size_t buf_len, jesenrpc_message_kind_t *kind);
+
+/**
+ * @brief Frees a parsed message (single or batch).
+ * @param message The message to destroy.
+ * @return JESENRPC_ERR_NONE on success, or an error code.
+ */
+JESENRPC_API jesenrpc_err_t
+jesenrpc_message_destroy(jesenrpc_message_t *message);
 
 /** @} */
 

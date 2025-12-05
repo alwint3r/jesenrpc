@@ -1038,6 +1038,130 @@ jesenrpc_err_t jesenrpc_error_object_destroy(jesenrpc_error_object_t *error) {
   return JESENRPC_ERR_NONE;
 }
 
+static jesenrpc_err_t
+jrpc_parse_request_batch_from_node(jesen_node_t *root,
+                                   jesenrpc_request_batch_t *out) {
+  if (!root || !out) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  out->items = NULL;
+  out->count = 0;
+
+  bool is_array = false;
+  jesen_err_t err = jesen_value_is_array(root, &is_array);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+  if (!is_array) {
+    return JESENRPC_ERR_VALIDATION;
+  }
+
+  size_t count = 0;
+  err = jesen_array_size(root, &count);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+
+  if (count == 0) {
+    return JESENRPC_ERR_NONE;
+  }
+
+  jesenrpc_request_t **items =
+      (jesenrpc_request_t **)calloc(count, sizeof(*items));
+  if (!items) {
+    return JESENRPC_ERR_ALLOC;
+  }
+
+  for (size_t i = 0; i < count; ++i) {
+    jesen_node_t *elem = NULL;
+    err = jesen_array_get_value(root, (uint32_t)i, &elem);
+    if (err != JESEN_ERR_NONE) {
+      for (size_t j = 0; j < i; ++j) {
+        jesenrpc_request_destroy(items[j]);
+      }
+      free(items);
+      return err;
+    }
+    jesenrpc_request_t *req = NULL;
+    err = jrpc_parse_request_node(elem, &req);
+    if (err != JESENRPC_ERR_NONE) {
+      for (size_t j = 0; j < i; ++j) {
+        jesenrpc_request_destroy(items[j]);
+      }
+      free(items);
+      return err;
+    }
+    items[i] = req;
+  }
+
+  out->items = items;
+  out->count = count;
+  return JESENRPC_ERR_NONE;
+}
+
+static jesenrpc_err_t
+jrpc_parse_response_batch_from_node(jesen_node_t *root,
+                                    jesenrpc_response_batch_t *out) {
+  if (!root || !out) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  out->items = NULL;
+  out->count = 0;
+
+  bool is_array = false;
+  jesen_err_t err = jesen_value_is_array(root, &is_array);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+  if (!is_array) {
+    return JESENRPC_ERR_VALIDATION;
+  }
+
+  size_t count = 0;
+  err = jesen_array_size(root, &count);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+
+  if (count == 0) {
+    return JESENRPC_ERR_NONE;
+  }
+
+  jesenrpc_response_t **items =
+      (jesenrpc_response_t **)calloc(count, sizeof(*items));
+  if (!items) {
+    return JESENRPC_ERR_ALLOC;
+  }
+
+  for (size_t i = 0; i < count; ++i) {
+    jesen_node_t *elem = NULL;
+    err = jesen_array_get_value(root, (uint32_t)i, &elem);
+    if (err != JESEN_ERR_NONE) {
+      for (size_t j = 0; j < i; ++j) {
+        jesenrpc_response_destroy(items[j]);
+      }
+      free(items);
+      return err;
+    }
+    jesenrpc_response_t *resp = NULL;
+    err = jrpc_parse_response_node(elem, &resp);
+    if (err != JESENRPC_ERR_NONE) {
+      for (size_t j = 0; j < i; ++j) {
+        jesenrpc_response_destroy(items[j]);
+      }
+      free(items);
+      return err;
+    }
+    items[i] = resp;
+  }
+
+  out->items = items;
+  out->count = count;
+  return JESENRPC_ERR_NONE;
+}
+
 jesenrpc_err_t
 jesenrpc_request_batch_serialize(jesenrpc_request_t *const *requests,
                                  size_t request_count, char *out_buf,
@@ -1176,59 +1300,9 @@ jesenrpc_err_t jesenrpc_request_batch_parse(char *buf, size_t buf_len,
     return err;
   }
 
-  bool is_array = false;
-  err = jesen_value_is_array(root, &is_array);
-  if (err != JESEN_ERR_NONE) {
-    jesen_destroy(root);
-    return err;
-  }
-  if (!is_array) {
-    jesen_destroy(root);
-    return JESENRPC_ERR_VALIDATION;
-  }
-
-  size_t count = 0;
-  err = jesen_array_size(root, &count);
-  if (err != JESEN_ERR_NONE) {
-    jesen_destroy(root);
-    return err;
-  }
-
-  jesenrpc_request_t **items =
-      (jesenrpc_request_t **)calloc(count, sizeof(*items));
-  if (!items) {
-    jesen_destroy(root);
-    return JESENRPC_ERR_ALLOC;
-  }
-
-  for (size_t i = 0; i < count; ++i) {
-    jesen_node_t *elem = NULL;
-    err = jesen_array_get_value(root, (uint32_t)i, &elem);
-    if (err != JESEN_ERR_NONE) {
-      for (size_t j = 0; j < i; ++j) {
-        jesenrpc_request_destroy(items[j]);
-      }
-      free(items);
-      jesen_destroy(root);
-      return err;
-    }
-    jesenrpc_request_t *req = NULL;
-    err = jrpc_parse_request_node(elem, &req);
-    if (err != JESENRPC_ERR_NONE) {
-      for (size_t j = 0; j < i; ++j) {
-        jesenrpc_request_destroy(items[j]);
-      }
-      free(items);
-      jesen_destroy(root);
-      return err;
-    }
-    items[i] = req;
-  }
-
-  out->items = items;
-  out->count = count;
+  err = jrpc_parse_request_batch_from_node(root, out);
   jesen_destroy(root);
-  return JESENRPC_ERR_NONE;
+  return err;
 }
 
 jesenrpc_err_t jesenrpc_response_batch_parse(char *buf, size_t buf_len,
@@ -1246,59 +1320,9 @@ jesenrpc_err_t jesenrpc_response_batch_parse(char *buf, size_t buf_len,
     return err;
   }
 
-  bool is_array = false;
-  err = jesen_value_is_array(root, &is_array);
-  if (err != JESEN_ERR_NONE) {
-    jesen_destroy(root);
-    return err;
-  }
-  if (!is_array) {
-    jesen_destroy(root);
-    return JESENRPC_ERR_VALIDATION;
-  }
-
-  size_t count = 0;
-  err = jesen_array_size(root, &count);
-  if (err != JESEN_ERR_NONE) {
-    jesen_destroy(root);
-    return err;
-  }
-
-  jesenrpc_response_t **items =
-      (jesenrpc_response_t **)calloc(count, sizeof(*items));
-  if (!items) {
-    jesen_destroy(root);
-    return JESENRPC_ERR_ALLOC;
-  }
-
-  for (size_t i = 0; i < count; ++i) {
-    jesen_node_t *elem = NULL;
-    err = jesen_array_get_value(root, (uint32_t)i, &elem);
-    if (err != JESEN_ERR_NONE) {
-      for (size_t j = 0; j < i; ++j) {
-        jesenrpc_response_destroy(items[j]);
-      }
-      free(items);
-      jesen_destroy(root);
-      return err;
-    }
-    jesenrpc_response_t *resp = NULL;
-    err = jrpc_parse_response_node(elem, &resp);
-    if (err != JESENRPC_ERR_NONE) {
-      for (size_t j = 0; j < i; ++j) {
-        jesenrpc_response_destroy(items[j]);
-      }
-      free(items);
-      jesen_destroy(root);
-      return err;
-    }
-    items[i] = resp;
-  }
-
-  out->items = items;
-  out->count = count;
+  err = jrpc_parse_response_batch_from_node(root, out);
   jesen_destroy(root);
-  return JESENRPC_ERR_NONE;
+  return err;
 }
 
 jesenrpc_err_t jesenrpc_request_batch_destroy(jesenrpc_request_batch_t *batch) {
@@ -1330,4 +1354,191 @@ jesenrpc_response_batch_destroy(jesenrpc_response_batch_t *batch) {
   batch->items = NULL;
   batch->count = 0;
   return JESENRPC_ERR_NONE;
+}
+
+static jesenrpc_err_t
+jrpc_detect_message_kind_from_object(jesen_node_t *object, bool in_batch,
+                                     jesenrpc_message_kind_t *out_kind) {
+  if (!object || !out_kind) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  bool is_object = false;
+  jesen_err_t err = jesen_value_is_object(object, &is_object);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+  if (!is_object) {
+    return JESENRPC_ERR_VALIDATION;
+  }
+
+  jesen_node_t *method_node = NULL;
+  err = jesen_node_find(object, "method", &method_node);
+  bool has_method = err == JESEN_ERR_NONE;
+  if (err != JESEN_ERR_NONE && err != JESEN_ERR_NOT_FOUND) {
+    return err;
+  }
+
+  jesen_node_t *result_node = NULL;
+  err = jesen_node_find(object, "result", &result_node);
+  bool has_result = err == JESEN_ERR_NONE;
+  if (err != JESEN_ERR_NONE && err != JESEN_ERR_NOT_FOUND) {
+    return err;
+  }
+
+  jesen_node_t *error_node = NULL;
+  err = jesen_node_find(object, "error", &error_node);
+  bool has_error = err == JESEN_ERR_NONE;
+  if (err != JESEN_ERR_NONE && err != JESEN_ERR_NOT_FOUND) {
+    return err;
+  }
+
+  if (has_method) {
+    if (has_result || has_error) {
+      return JESENRPC_ERR_VALIDATION;
+    }
+    *out_kind = in_batch ? JESENRPC_MESSAGE_REQUEST_BATCH
+                         : JESENRPC_MESSAGE_REQUEST_SINGLE;
+    return JESENRPC_ERR_NONE;
+  }
+
+  if (has_result || has_error) {
+    *out_kind = in_batch ? JESENRPC_MESSAGE_RESPONSE_BATCH
+                         : JESENRPC_MESSAGE_RESPONSE_SINGLE;
+    return JESENRPC_ERR_NONE;
+  }
+
+  return JESENRPC_ERR_VALIDATION;
+}
+
+static jesenrpc_err_t
+jrpc_detect_message_kind_from_node(jesen_node_t *root,
+                                   jesenrpc_message_kind_t *out_kind) {
+  if (!root || !out_kind) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  bool is_array = false;
+  jesen_err_t err = jesen_value_is_array(root, &is_array);
+  if (err != JESEN_ERR_NONE) {
+    return err;
+  }
+
+  if (is_array) {
+    size_t count = 0;
+    err = jesen_array_size(root, &count);
+    if (err != JESEN_ERR_NONE) {
+      return err;
+    }
+    if (count == 0) {
+      return JESENRPC_ERR_VALIDATION;
+    }
+    jesen_node_t *first = NULL;
+    err = jesen_array_get_value(root, 0, &first);
+    if (err != JESEN_ERR_NONE) {
+      return err;
+    }
+    return jrpc_detect_message_kind_from_object(first, true, out_kind);
+  }
+
+  return jrpc_detect_message_kind_from_object(root, false, out_kind);
+}
+
+jesenrpc_err_t jesenrpc_message_peek_kind(char *buf, size_t buf_len,
+                                          jesenrpc_message_kind_t *kind) {
+  if (!buf || !kind) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  jesen_node_t *root = NULL;
+  jesenrpc_err_t err = jrpc_parse_buffer_as_node(buf, buf_len, &root);
+  if (err != JESENRPC_ERR_NONE) {
+    return err;
+  }
+
+  err = jrpc_detect_message_kind_from_node(root, kind);
+  jesen_destroy(root);
+  return err;
+}
+
+jesenrpc_err_t jesenrpc_message_parse(char *buf, size_t buf_len,
+                                      jesenrpc_message_t *out) {
+  if (!buf || !out) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  memset(out, 0, sizeof(*out));
+  out->kind = JESENRPC_MESSAGE_UNKNOWN;
+
+  jesen_node_t *root = NULL;
+  jesenrpc_err_t err = jrpc_parse_buffer_as_node(buf, buf_len, &root);
+  if (err != JESENRPC_ERR_NONE) {
+    return err;
+  }
+
+  jesenrpc_message_kind_t kind = JESENRPC_MESSAGE_UNKNOWN;
+  err = jrpc_detect_message_kind_from_node(root, &kind);
+  if (err != JESENRPC_ERR_NONE) {
+    jesen_destroy(root);
+    return err;
+  }
+
+  switch (kind) {
+  case JESENRPC_MESSAGE_REQUEST_SINGLE:
+    err = jrpc_parse_request_node(root, &out->as.request);
+    break;
+  case JESENRPC_MESSAGE_REQUEST_BATCH:
+    err = jrpc_parse_request_batch_from_node(root, &out->as.request_batch);
+    break;
+  case JESENRPC_MESSAGE_RESPONSE_SINGLE:
+    err = jrpc_parse_response_node(root, &out->as.response);
+    break;
+  case JESENRPC_MESSAGE_RESPONSE_BATCH:
+    err = jrpc_parse_response_batch_from_node(root, &out->as.response_batch);
+    break;
+  default:
+    err = JESENRPC_ERR_VALIDATION;
+    break;
+  }
+
+  jesen_destroy(root);
+  if (err != JESENRPC_ERR_NONE) {
+    memset(out, 0, sizeof(*out));
+    out->kind = JESENRPC_MESSAGE_UNKNOWN;
+    return err;
+  }
+
+  out->kind = kind;
+  return JESENRPC_ERR_NONE;
+}
+
+jesenrpc_err_t jesenrpc_message_destroy(jesenrpc_message_t *message) {
+  if (!message) {
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  jesenrpc_err_t err = JESENRPC_ERR_NONE;
+  switch (message->kind) {
+  case JESENRPC_MESSAGE_REQUEST_SINGLE:
+    err = jesenrpc_request_destroy(message->as.request);
+    break;
+  case JESENRPC_MESSAGE_REQUEST_BATCH:
+    err = jesenrpc_request_batch_destroy(&message->as.request_batch);
+    break;
+  case JESENRPC_MESSAGE_RESPONSE_SINGLE:
+    err = jesenrpc_response_destroy(message->as.response);
+    break;
+  case JESENRPC_MESSAGE_RESPONSE_BATCH:
+    err = jesenrpc_response_batch_destroy(&message->as.response_batch);
+    break;
+  default:
+    return JESENRPC_ERR_INVALID_ARGS;
+  }
+
+  if (err == JESENRPC_ERR_NONE) {
+    memset(message, 0, sizeof(*message));
+    message->kind = JESENRPC_MESSAGE_UNKNOWN;
+  }
+
+  return err;
 }

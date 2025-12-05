@@ -159,6 +159,36 @@ for (size_t i = 0; i < batch.count; i++) {
 jesenrpc_request_batch_destroy(&batch);
 ```
 
+### Unified Message Parsing
+
+If you do not know upfront whether the payload is a request/response or
+single/batch, parse once with `jesenrpc_message_parse()` and branch on kind:
+
+```c
+jesenrpc_message_t msg = {0};
+jesenrpc_message_parse(json, json_len, &msg);
+
+switch (msg.kind) {
+case JESENRPC_MESSAGE_REQUEST_SINGLE:
+    handle_request(msg.as.request);
+    break;
+case JESENRPC_MESSAGE_REQUEST_BATCH:
+    handle_request_batch(&msg.as.request_batch);
+    break;
+case JESENRPC_MESSAGE_RESPONSE_SINGLE:
+    handle_response(msg.as.response);
+    break;
+case JESENRPC_MESSAGE_RESPONSE_BATCH:
+    handle_response_batch(&msg.as.response_batch);
+    break;
+default:
+    // Invalid/unsupported payload
+    break;
+}
+
+jesenrpc_message_destroy(&msg);
+```
+
 ## API Reference
 
 ### ID Functions
@@ -218,6 +248,14 @@ jesenrpc_request_batch_destroy(&batch);
 | `jesenrpc_response_batch_serialize()` | Serialize response batch |
 | `jesenrpc_response_batch_parse()` | Parse response batch |
 | `jesenrpc_response_batch_destroy()` | Free response batch |
+
+### Message Functions
+
+| Function | Description |
+|----------|-------------|
+| `jesenrpc_message_parse()` | Parse any JSON-RPC message (single/batch, request/response) |
+| `jesenrpc_message_peek_kind()` | Detect message kind without allocating full structures |
+| `jesenrpc_message_destroy()` | Free message parsed by `jesenrpc_message_parse()` |
 
 ## Standard Error Codes
 
